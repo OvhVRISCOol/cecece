@@ -1,0 +1,410 @@
+getgenv().Blaqcc = {
+    Aimbot = {
+        Keybind = Enum.KeyCode.C,
+        CamlockPrediction = 0.128,
+        Prediction = 0.1206,
+
+        Basic = true,
+        TargetPart = "HumanoidRootPart",
+
+        NearestPart = false,
+        MultipleTargetPart = {"Head","HumanoidRootPart"},
+
+        CameraSmoothing = 0.0078,
+        CameraShake = 0,
+        JumpOffset = -1
+    },
+    Safety = {
+        AntiGroundShots = false,
+    },
+    Checks = {
+        DisableOnTargetDeath = true,
+        DisableOnPlayerDeath = true,
+        CheckKoStatus = true,
+    },
+    Macro = {
+        Enabled = false,
+        SpeedGlitchKey = Enum.KeyCode.X,
+    },
+    EspSection = {
+        ChamsESP = false,
+        ChamsESPKeybind = Enum.KeyCode.T,
+        ChamsColor1 = Color3.fromRGB(255, 255, 255),
+        ChamsColor2 = Color3.fromRGB(255, 255, 255),
+    },
+    Misc = {
+        RejoinServer = false,
+    },
+    Spin = {
+        Enabled = true,
+        SpinSpeed = 4900,
+        Degrees = 360,
+        Keybind = Enum.KeyCode.V,
+    },
+}
+
+if (not getgenv().Loaded) then
+    local Blaqcc = getgenv().Blaqcc
+
+    local Players = game:GetService("Players")
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local Camera = workspace.CurrentCamera
+    local Client = Players.LocalPlayer
+    
+    local function CheckAnti(Plr) -- // Anti-aim detection
+        if Plr.Character.HumanoidRootPart.Velocity.Y < -70 then
+            return true
+        elseif Plr and (Plr.Character.HumanoidRootPart.Velocity.X > 450 or Plr.Character.HumanoidRootPart.Velocity.X < -35) then
+            return true
+        elseif Plr and Plr.Character.HumanoidRootPart.Velocity.Y > 60 then
+            return true
+        elseif Plr and (Plr.Character.HumanoidRootPart.Velocity.Z > 35 or Plr.Character.HumanoidRootPart.Velocity.Z < -35) then
+            return true
+        else
+            return false
+        end
+    end
+    
+    local function getnamecall()
+        if game.PlaceId == 2788229376 then
+            return "UpdateMousePosI"
+        elseif game.PlaceId == 5602055394 or game.PlaceId == 7951883376 then
+            return "MousePosI"
+        elseif game.PlaceId == 9825515356 then
+            return "GetMousePosI"
+        end
+    end
+    
+    function MainEventLocate()
+        for _,v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+            if v.Name == "MainEvent" then
+                return v
+            end
+        end
+    end
+    
+    local Locking = false
+    local Plr = nil -- Initialize Plr here
+    
+    -- 360 on bind
+    local Toggle = false -- Initialize Toggle to false
+    
+    local function OnKeyPress(Input, GameProcessedEvent)
+        if Input.KeyCode == Blaqcc.Aimbot.Keybind and not GameProcessedEvent then 
+            Toggle = not Toggle
+        elseif Input.KeyCode == Blaqcc.Macro.SpeedGlitchKey then
+            if Blaqcc.Macro.Enabled then 
+                Blaqcc.Macro.SpeedGlitch = not Blaqcc.Macro.SpeedGlitch
+                if Blaqcc.Macro.SpeedGlitch then
+                    repeat
+                        game:GetService("RunService").Heartbeat:Wait()
+                        keypress(0x49)
+                        game:GetService("RunService").Heartbeat:Wait()
+                        keypress(0x4F)
+                        game:GetService("RunService").Heartbeat:Wait()
+                        keyrelease(0x49)
+                        game:GetService("RunService").Heartbeat:Wait()
+                        keyrelease(0x4F)
+                        game:GetService("RunService").Heartbeat:Wait()
+                    until not Blaqcc.Macro.SpeedGlitch
+                end
+            end
+        end
+    end
+    
+    UserInputService.InputBegan:Connect(OnKeyPress)
+    
+    UserInputService.InputBegan:Connect(function(keygo, ok)
+        if (not ok) then
+            if (keygo.KeyCode == Blaqcc.Aimbot.Keybind) then
+                Locking = not Locking
+                if Locking then
+                    Plr = getClosestPlayerToCursor()
+                elseif not Locking then
+                    if Plr then
+                        Plr = nil
+                    end
+                end
+            end
+        end
+    end)
+    
+    function getClosestPlayerToCursor()
+        local closestDist = math.huge
+        local closestPlr = nil
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= Client and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                local screenPos, cameraVisible = workspace.CurrentCamera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                if cameraVisible then
+                    local distToMouse = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                    if distToMouse < closestDist then
+                        closestPlr = v
+                        closestDist = distToMouse
+                    end
+                end
+            end
+        end
+        return closestPlr
+    end
+    
+    function getClosestPartToCursor(Player)
+        local closestPart, closestDist = nil, math.huge
+        if Player.Character and Player.Character:FindFirstChild("Humanoid") and Player.Character:FindFirstChild("Head") and Player.Character.Humanoid.Health ~= 0 and Player.Character:FindFirstChild("HumanoidRootPart") then
+            for i, part in pairs(Player.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    local screenPos, cameraVisible = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+                    local distToMouse = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                    if distToMouse < closestDist and table.find(Blaqcc.Aimbot.MultipleTargetPart, part.Name) then
+                        closestPart = part
+                        closestDist = distToMouse
+                    end
+                end
+            end
+            return closestPart
+        end
+    end
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if Plr and Plr.Character then
+            if Blaqcc.Aimbot.NearestPart == true and Blaqcc.Aimbot.Basic == false then
+                Blaqcc.Aimbot.TargetPart = tostring(getClosestPartToCursor(Plr))
+            elseif Blaqcc.Aimbot.Basic == true and Blaqcc.Aimbot.NearestPart == false then
+                Blaqcc.Aimbot.TargetPart = Blaqcc.Aimbot.TargetPart
+            end
+        end
+    end)
+    
+    local function getVelocity(Player)
+        local Old = Player.Character.HumanoidRootPart.Position
+        wait(0.145)
+        local Current = Player.Character.HumanoidRootPart.Position
+        return (Current - Old) / 0.145
+    end
+    
+    local function GetShakedVector3(Setting)
+        return Vector3.new(math.random(-Setting * 1e9, Setting * 1e9), math.random(-Setting * 1e9, Setting * 1e9), math.random(-Setting * 1e9, Setting * 1e9)) / 1e9;
+    end
+    
+    local v = nil
+    game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+        if Plr ~= nil and Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
+            v = getVelocity(Plr)
+        end
+    end)
+    
+    local MainEvent = MainEventLocate()
+    
+    Client.CharacterAdded:Connect(function(character)
+        character.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then
+                child.Activated:Connect(function()
+                    if Plr and Plr.Character then
+                        local Position = Plr.Character.Humanoid:GetState() == Enum.HumanoidStateType.Freefall and Plr.Character[Blaqcc.Aimbot.TargetPart].Position + Vector3.new(0, Blaqcc.Aimbot.JumpOffset, 0) or Plr.Character[Blaqcc.Aimbot.TargetPart].Position
+                        if not CheckAnti(Plr) then
+                            MainEvent:FireServer(getnamecall(), Position + ((Plr.Character.HumanoidRootPart.Velocity) * Blaqcc.Aimbot.Prediction))
+                        else
+                            MainEvent:FireServer(getnamecall(), Position + ((Plr.Character.Humanoid.MoveDirection * Plr.Character.Humanoid.WalkSpeed) * Blaqcc.Aimbot.Prediction))
+                        end
+                    end
+                end)
+            end
+        end)
+    end)
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if Plr ~= nil and Plr.Character then
+            local Position = Plr.Character.Humanoid:GetState() == Enum.HumanoidStateType.Freefall and Plr.Character[Blaqcc.Aimbot.TargetPart].Position + Vector3.new(0, Blaqcc.Aimbot.JumpOffset, 0) or Plr.Character[Blaqcc.Aimbot.TargetPart].Position
+            if not CheckAnti(Plr) then
+                local Main = CFrame.new(workspace.CurrentCamera.CFrame.p, Position + ((Plr.Character.HumanoidRootPart.Velocity) * Blaqcc.Aimbot.CamlockPrediction) + GetShakedVector3(Blaqcc.Aimbot.CameraShake))
+                workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(Main, Blaqcc.Aimbot.CameraSmoothing, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            else
+                local Main = CFrame.new(workspace.CurrentCamera.CFrame.p, Position + ((Plr.Character.Humanoid.MoveDirection * Plr.Character.Humanoid.WalkSpeed) * Blaqcc.Aimbot.CamlockPrediction) + GetShakedVector3(Blaqcc.Aimbot.CameraShake))
+                workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(Main, Blaqcc.Aimbot.CameraSmoothing, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            end
+        end
+        if Blaqcc.Checks.CheckKoStatus == true and Plr and Plr.Character then
+            local KOd = Plr.Character:WaitForChild("BodyEffects")["K.O"].Value
+            local Grabbed = Plr.Character:FindFirstChild("GRABBING_CONSTRAINT") ~= nil
+            if Plr.Character.Humanoid.Health < 1 or KOd or Grabbed then
+                if Locking == true then
+                    Plr = nil
+                    Locking = false
+                end
+            end
+        end
+        if Blaqcc.Checks.DisableOnTargetDeath == true and Plr and Plr.Character:FindFirstChild("Humanoid") then
+            if Plr.Character.Humanoid.health < 1 then
+                if Locking == true then
+                    Plr = nil
+                    Locking = false
+                end
+            end
+        end
+        if Blaqcc.Checks.DisableOnPlayerDeath == true and Client.Character and Client.Character:FindFirstChild("Humanoid") and Client.Character.Humanoid.health < 1 then
+            if Locking == true then
+                Plr = nil
+                Locking = false
+            end
+        end
+        if Blaqcc.Safety.AntiGroundShots == true and Plr.Character.Humanoid.Jump == true and Plr.Character.Humanoid.FloorMaterial == Enum.Material.Air then
+            pcall(function()
+                local TargetVelv5 = Plr.Character.HumanoidRootPart
+                TargetVelv5.Velocity = Vector3.new(TargetVelv5.Velocity.X, math.abs(TargetVelv5.Velocity.Y * 0.36),
+                TargetVelv5.Velocity.Z)
+                TargetVelv5.AssemblyLinearVelocity = Vector3.new(TargetVelv5.Velocity.X, math.abs(TargetVelv5.Velocity.Y * 0.36), TargetVelv5.Velocity.Z)
+            end)
+        end
+    end)
+    
+    if Blaqcc.EspSection.ChamsESP == true then
+    
+        local CoreGui = game:GetService("CoreGui")
+        local Players = game:GetService("Players")
+        local lp = Players.LocalPlayer
+        local connections = {}
+        
+        local Storage = Instance.new("Folder")
+        Storage.Parent = CoreGui
+        Storage.Name = "Highlight_Storage"
+        
+        local isEnabled = false
+        
+        local function Highlight(plr)
+            local Highlight = Instance.new("Highlight")
+            Highlight.Name = plr.Name
+            Highlight.FillColor = Blaqcc.EspSection.ChamsColor1
+            Highlight.DepthMode = "AlwaysOnTop"
+            Highlight.FillTransparency = 0.5
+            Highlight.OutlineColor = Blaqcc.EspSection.ChamsColor2
+            Highlight.OutlineTransparency = 0
+            Highlight.Parent = Storage
+            
+            local plrchar = plr.Character
+            if plrchar then
+                Highlight.Adornee = plrchar
+            end
+        
+            connections[plr] = plr.CharacterAdded:Connect(function(char)
+                Highlight.Adornee = char
+            end)
+        end
+        
+        local function EnableHighlight()
+            isEnabled = true
+            for _, player in ipairs(Players:GetPlayers()) do
+                Highlight(player)
+            end
+        end
+        
+        local function DisableHighlight()
+            isEnabled = false
+            for _, highlight in ipairs(Storage:GetChildren()) do
+                highlight:Destroy()
+            end
+            for _, connection in pairs(connections) do
+                connection:Disconnect()
+            end
+        end
+        
+        UserInputService.InputBegan:Connect(function(input, GameProcessedEvent)
+            if GameProcessedEvent then return end
+            if input.KeyCode == Blaqcc.EspSection.ChamsESPKeybind then
+                if isEnabled then
+                    DisableHighlight()
+                else
+                    EnableHighlight()
+                end
+            end
+        end)
+        
+        Players.PlayerAdded:Connect(function(player)
+            if isEnabled then
+                Highlight(player)
+            end
+        end)
+        
+        Players.PlayerRemoving:Connect(function(player)
+            local highlight = Storage:FindFirstChild(player.Name)
+            if highlight then
+                highlight:Destroy()
+            end
+            local connection = connections[player]
+            if connection then
+                connection:Disconnect()
+            end
+        end)
+        
+        
+        if isEnabled then
+            EnableHighlight()
+        end
+    end
+    
+    if Blaqcc.Misc.RejoinServer == true then
+        local TeleportService = game:GetService("TeleportService")
+    
+        local function RejoinSameServer()
+            local success, errorMessage = pcall(function()
+            local placeId = game.PlaceId
+            local jobId = game.JobId
+            TeleportService:TeleportToPlaceInstance(placeId, jobId)
+        end)
+    
+        if not success then
+            warn("Failed to rejoin: " .. errorMessage)
+        end
+    end
+    
+    task.wait()
+    RejoinSameServer()
+    end
+    
+    if Blaqcc.Spin.Enabled == true then
+        local Keybind = Blaqcc.Spin.Keybind
+        
+        local function OnKeyPress(Input, GameProcessedEvent)
+            if GameProcessedEvent then return end
+            if Input.KeyCode == Blaqcc.Spin.Keybind then 
+                Blaqcc.Spin.Enabled = not Blaqcc.Spin.Enabled
+            end
+        end
+        
+        UserInputService.InputBegan:Connect(OnKeyPress)
+        
+        local LastRenderTime = 0
+        local TotalRotation = 0
+        
+        local function RotateCamera()
+            if Blaqcc.Spin.Enabled then
+                local CurrentTime = tick()
+                local TimeDelta = math.min(CurrentTime - LastRenderTime, 0.01)
+                LastRenderTime = CurrentTime
+        
+                local RotationAngle = Blaqcc.Spin.SpinSpeed * TimeDelta
+                local Rotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), math.rad(RotationAngle))
+                Camera.CFrame = Camera.CFrame * Rotation
+        
+                TotalRotation = TotalRotation + RotationAngle
+                if TotalRotation >= Blaqcc.Spin.Degrees then 
+                    Blaqcc.Spin.Enabled = false
+                    TotalRotation = 0
+                end
+            end
+        end
+        
+        RunService.RenderStepped:Connect(RotateCamera)
+    end
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Blaq.cc",
+        Text = "Loaded",
+        Duration = 5
+    }) 
+getgenv().Loaded = true -- end of the script
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Blaq.cc",
+        Text = "Updated Table",
+        Duration = 5
+    })
+end
